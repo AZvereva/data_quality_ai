@@ -10,6 +10,33 @@ As an analytics engineer joining a new organization, you typically inherit exist
 Upon executing your first queries, you encounter results that do not align with business expectations. Investigation reveals that source data contains inconsistencies, and transformation logic compounds these issues. What follows is a multi-day debugging process to trace errors that could have been identified within minutes through systematic quality checks.
 This guide establishes protocols for preventing such scenarios. It does not rely on proprietary tools or external platforms. It relies on disciplined SQL practices and explicit validation decisions at each processing stage.
 
+## Table of Contents
+
+- [Why This Matters](#why-this-matters)
+- [Part 1: Incoming Data is Dirty](#part-1-incoming-data-is-dirty)
+  - [Schema Drift](#schema-drift)
+  - [Volume Anomalies](#volume-anomalies)
+  - [Data Freshness](#data-freshness)
+  - [Duplicate Records](#duplicate-records)
+  - [Orphan Records](#orphan-records)
+  - [Type Mismatches](#type-mismatches)
+  - [Encoding & Character Issues](#encoding--character-issues)
+  - [Whitespace & Padding](#whitespace--padding)
+  - [Case Standardization](#case-standardization)
+  - [Impossible Values](#impossible-values)
+  - [Outliers](#outliers)
+  - [Missing Values (NULLs)](#missing-values-nulls)
+- [Part 2: Adjusting Data for Analysis](#part-2-adjusting-data-for-analysis)
+  - [Division by Zero](#division-by-zero)
+  - [Aggregation Errors](#aggregation-errors)
+  - [Date Arithmetic Errors](#date-arithmetic-errors)
+  - [Implicit Cast Failures](#implicit-cast-failures)
+  - [Circular References](#circular-references)
+  - [Post-Transform Reconciliation](#post-transform-reconciliation)
+- [Checklists](#checklists)
+- [Personal Experience](#personal-experience)
+- [AI Collaboration Disclosure](#ai-collaboration-disclosure)
+- [Principle](#principle)
 ---
 
 ## Part 1: Incoming Data is Dirty
