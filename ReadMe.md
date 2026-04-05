@@ -49,9 +49,9 @@ This guide establishes protocols for preventing such scenarios. It does not rely
 
 Problems caused by sources you don't control. Fix or flag before any transformation.
 
-**DWH Approach:** Apply all checks in **staging layer** (raw data landing zone). Implement as views or ephemeral models that filter/quarantine bad records before persistence. Never allow dirty data into core warehouse tables. Use separate `quarantine` schema for rejected records with full audit trail [^27^].
+**DWH Approach:** Apply all checks in **staging layer** (raw data landing zone). Implement as views or ephemeral models that filter/quarantine bad records before persistence. Never allow dirty data into core warehouse tables. Use separate `quarantine` schema for rejected records with full audit trail.
 
-**Monitoring:** Automated dbt tests on staging models, separate `data_quality` schema with rejected records, freshness checks in orchestrator (Airflow/Dagster), schema validation via source contracts [^32^].
+**Monitoring:** Automated dbt tests on staging models, separate `data_quality` schema with rejected records, freshness checks in orchestrator (Airflow/Dagster), schema validation via source contracts.
 
 ### Schema Drift
 
@@ -59,7 +59,7 @@ Problems caused by sources you don't control. Fix or flag before any transformat
 **Consequences:** Your query selects columns that no longer exist, or misses new critical fields. Pipeline fails or produces incomplete data.  
 **Decision:** Check schema before every transformation.
 
-**DWH Approach:** Staging layer source contracts (dbt 1.5+) [^33^], `information_schema` polling in ingestion pipeline, versioned schemas for breaking changes. Store contracts in YAML/JSON Schema, integrate into CI/CD workflows [^32^].
+**DWH Approach:** Staging layer source contracts (dbt 1.5+), `information_schema` polling in ingestion pipeline, versioned schemas for breaking changes. Store contracts in YAML/JSON Schema, integrate into CI/CD workflows.
 
 **Monitoring:** Schema change alerts via webhook to Slack/Teams; dbt source freshness tests; separate `schema_changes` audit table logging all DDL alterations.
 
@@ -78,7 +78,7 @@ ORDER BY ordinal_position;
 
 **DWH Approach:** Staging layer row count validation before `INSERT`. Use `COUNT(*)` in pre-flight CTE; abort load if outside tolerance.
 
-**Monitoring:** Time-series table `volume_metrics` (date, table_name, row_count, z_score); BI dashboard with 7-day rolling bands; pager alert on 3-sigma deviation [^4^].
+**Monitoring:** Time-series table `volume_metrics` (date, table_name, row_count, z_score); BI dashboard with 7-day rolling bands; pager alert on 3-sigma deviation.
 
 ```sql
 -- Optimized: Single scan, no CTE materialization
@@ -95,7 +95,7 @@ FROM orders;
 **Consequences:** Decisions based on yesterday's data in real-time business. Missed opportunities. Wrong actions.  
 **Decision:** Check last update time. Stop if > SLA threshold.
 
-**DWH Approach:** Staging layer metadata check before transformation. SLA enforcement via pipeline orchestrator (fail task if `MAX(updated_at)` < threshold) [^4^].
+**DWH Approach:** Staging layer metadata check before transformation. SLA enforcement via pipeline orchestrator (fail task if `MAX(updated_at)` < threshold).
 
 **Monitoring:** `freshness_alerts` table with SLA breach history; BI dashboard showing lag by source; automated Slack alert with `@channel` for critical tables > 4 hours stale.
 
@@ -112,7 +112,7 @@ FROM your_table;
 **Consequences:** Revenue double-counted. Customer counts inflated. Metrics meaningless.  
 **Decision:** Check primary key uniqueness before aggregation.
 
-**DWH Approach:** Staging layer: Deduplicate via `ROW_NUMBER()` before persistence, or route duplicates to `quarantine.duplicates` table [^24^]. Never pass duplicates to mart layer.
+**DWH Approach:** Staging layer: Deduplicate via `ROW_NUMBER()` before persistence, or route duplicates to `quarantine.duplicates` table. Never pass duplicates to mart layer.
 
 **Monitoring:** `duplicate_counts` daily snapshot table; dbt uniqueness tests on all primary keys; BI dashboard showing duplicate rate by source.
 
@@ -136,7 +136,7 @@ HAVING COUNT(DISTINCT customer_id) > 1;
 **Consequences:** Joins silently drop data. Reports undercount. Relationships appear broken when they exist.  
 **Decision:** Verify referential integrity before joins.
 
-**DWH Approach:** Staging layer referential integrity checks. Left join to parent; filter orphans to `quarantine.orphans` table with FK violation details [^7^].
+**DWH Approach:** Staging layer referential integrity checks. Left join to parent; filter orphans to `quarantine.orphans` table with FK violation details.
 
 **Monitoring:** `orphan_rate` metric in data quality dashboard; dbt relationship tests; weekly orphan reconciliation report to source system owners.
 
@@ -246,7 +246,7 @@ SELECT LOWER(country) as standard_country FROM customers;
 **Consequences:** Future dates in order history. Negative ages. 200-year-old customers. Analysis becomes joke.  
 **Decision:** Define valid ranges. Reject or flag violations.
 
-**DWH Approach:** Staging layer: `CHECK` constraints on staging tables; business rule validation in CTEs; quarantine violations to `quarantine.business_rules` [^24^].
+**DWH Approach:** Staging layer: `CHECK` constraints on staging tables; business rule validation in CTEs; quarantine violations to `quarantine.business_rules`.
 
 **Monitoring:** `impossible_value_log` with rule violation counts; BI dashboard showing violation rate by rule; automated source system feedback loop.
 
@@ -322,9 +322,9 @@ FROM table;
 
 Problems caused by your own transformations. Prevent errors in calculations and aggregations.
 
-**DWH Approach:** Apply in **intermediate/mart layer**. Use ephemeral models for transformation logic; persist quality checks in `audit` schema. Reconciliation tables comparing source → staging → mart totals [^2^].
+**DWH Approach:** Apply in **intermediate/mart layer**. Use ephemeral models for transformation logic; persist quality checks in `audit` schema. Reconciliation tables comparing source → staging → mart totals.
 
-**Monitoring:** dbt tests on all marts, Great Expectations/Elementary for complex rules [^16^][^18^], BI dashboard showing "data health score" by mart.
+**Monitoring:** dbt tests on all marts, Great Expectations/Elementary for complex rules, BI dashboard showing "data health score" by mart.
 
 ### Division by Zero
 
@@ -395,12 +395,12 @@ FROM customers;
 ### Implicit Cast Failures
 
 **Problem:** Database implicitly casts types, producing unexpected results, or you explicitly cast in performance-critical contexts.  
-**Consequences:** '2024-01-01' > '2024-1-1' (string comparison vs date). 5 / 2 = 2 (integer division). Worse: casting in JOINs or WHERE clauses disables indexes, causing full table scans on large tables [^13^].  
+**Consequences:** '2024-01-01' > '2024-1-1' (string comparison vs date). 5 / 2 = 2 (integer division). Worse: casting in JOINs or WHERE clauses disables indexes, causing full table scans on large tables.  
 **Decision:** Store data as correct types from ingestion. Cast only in final SELECT or in CTEs/materialized tables, never in JOINs or WHERE clauses on source tables.
 
 **DWH Approach:** Staging layer: Correct types enforced at ingestion. Mart layer: Cast only in final projection, never in JOIN/WHERE. Use `TRY_CAST` for safe conversions.
 
-**Monitoring:** `implicit_cast_detection` query log analysis; query performance monitoring for sequential scans [^13^]; dbt linting rules banning casts in JOINs.
+**Monitoring:** `implicit_cast_detection` query log analysis; query performance monitoring for sequential scans; dbt linting rules banning casts in JOINs.
 
 ```sql
 -- WRONG: Implicit string comparison (works but risky)
@@ -495,7 +495,7 @@ Systematic observation of data health across the entire pipeline.
 
 **Quarantine Pattern (Fail-Fast vs Quarantine):**
 
-Per best practices, implement **Quarantine Strategy** as default: separate invalid records from valid ones, allowing pipeline to continue while isolating problems for review [^27^]. Use **Fail-Fast** only for critical schema violations or when data quality drops below 80% pass rate [^27^].
+Per best practices, implement **Quarantine Strategy** as default: separate invalid records from valid ones, allowing pipeline to continue while isolating problems for review. Use **Fail-Fast** only for critical schema violations or when data quality drops below 80% pass rate.
 
 **Quarantine Schema Structure:**
 
@@ -575,7 +575,7 @@ CREATE TABLE audit.schema_changes (
 
 **1. Table Constraints (Hard Enforcement)**
 
-Postgres-native enforcement at database level. Use for non-negotiable rules on production tables [^12^].
+Postgres-native enforcement at database level. Use for non-negotiable rules on production tables.
 
 ```sql
 -- Primary key (uniqueness + non-null)
@@ -603,7 +603,7 @@ ALTER TABLE orders ALTER COLUMN order_date SET NOT NULL;
 
 **2. dbt Tests (Soft Enforcement)**
 
-Configurable validation without blocking. Standard: uniqueness, not_null, accepted_values, relationships. Custom: SQL-based business rules [^18^][^20^].
+Configurable validation without blocking. Standard: uniqueness, not_null, accepted_values, relationships. Custom: SQL-based business rules.
 
 ```yaml
 # schema.yml
@@ -626,13 +626,13 @@ models:
               max_value: 1000000
 ```
 
-**When to use:** Staging/intermediate layers; rapid iteration; warnings before hard constraints. Elementary package provides anomaly detection and schema change detection [^16^][^18^].
+**When to use:** Staging/intermediate layers; rapid iteration; warnings before hard constraints. Elementary package provides anomaly detection and schema change detection.
 
-**Monitoring:** dbt artifacts parsed into `elementary` schema; HTML dashboard generated via CLI showing test history and trends [^18^][^20^].
+**Monitoring:** dbt artifacts parsed into `elementary` schema; HTML dashboard generated via CLI showing test history and trends.
 
 **3. Separate QA Tables (Audit Trail)**
 
-Persistent logging of quality metrics over time. Enables trend analysis and SLA reporting [^8^].
+Persistent logging of quality metrics over time. Enables trend analysis and SLA reporting.
 
 ```sql
 -- Daily quality snapshot with trend detection
@@ -672,11 +672,11 @@ SELECT
 FROM orders, stats s;
 ```
 
-**When to use:** Compliance requirements, SLA tracking, executive reporting, trend analysis. Required for data governance maturity [^8^].
+**When to use:** Compliance requirements, SLA tracking, executive reporting, trend analysis. Required for data governance maturity.
 
 **4. BI Dashboard Monitoring**
 
-Real-time visibility for business stakeholders. Separate from technical alerts [^1^][^8^].
+Real-time visibility for business stakeholders. Separate from technical alerts.
 
 ```sql
 -- Materialized view for dashboard performance
@@ -693,24 +693,24 @@ WHERE check_timestamp >= CURRENT_TIMESTAMP - INTERVAL '7 days'
 GROUP BY table_name;
 
 -- Refresh schedule for materialized view
--- Use pg_cron for automated refresh every 15 minutes [^34^]
+-- Use pg_cron for automated refresh every 15 minutes
 SELECT cron.schedule('refresh_health_score', '*/15 * * * *', 
     'REFRESH MATERIALIZED VIEW CONCURRENTLY mv_data_health_score');
 ```
 
 **Dashboard components:**
-- Health score by table (0-100%) with color coding [^17^]
+- Health score by table (0-100%) with color coding 
 - Trend line (7/30/90 days) showing quality degradation
 - SLA compliance (freshness, volume) with threshold lines
 - Top 5 failing checks with drill-down capability
 - Quarantine queue depth and aging
 - Reconciliation variance by table
 
-**When to use:** Business stakeholder communication, executive summaries, self-service quality visibility [^8^].
+**When to use:** Business stakeholder communication, executive summaries, self-service quality visibility.
 
 **5. Anomaly Detection (Statistical)**
 
-ML-based detection of patterns humans miss. Requires historical baseline [^3^][^4^].
+ML-based detection of patterns humans miss. Requires historical baseline.
 
 ```sql
 -- Z-score calculation for anomaly detection
@@ -739,7 +739,7 @@ JOIN stats s ON m.table_name = s.table_name AND m.check_name = s.check_name
 WHERE m.check_date = CURRENT_DATE;
 ```
 
-**When to use:** High-volume tables, subtle drift detection, fraud detection, automated threshold adjustment. Elementary provides built-in anomaly detection for dbt tests [^16^].
+**When to use:** High-volume tables, subtle drift detection, fraud detection, automated threshold adjustment. Elementary provides built-in anomaly detection for dbt tests.
 
 ### Alerting Channels
 
@@ -761,7 +761,7 @@ Every alert must include:
 - Sample bad records (limited to 5)
 - Runbook link
 - Escalation contact
-- dbt compiled SQL (via Elementary one-click copy) [^20^]
+- dbt compiled SQL (via Elementary one-click copy)
 
 **Slack Integration Example:**
 
@@ -905,8 +905,3 @@ WHERE check_date = CURRENT_DATE;
 
 "In creating this document, I collaborated with Kimi to assist with drafting, structure, and technical editing. I affirm that all AI-generated and co-created content underwent thorough review and evaluation. The final output accurately reflects my understanding, expertise, and intended meaning. While AI assistance was instrumental in the process, I maintain full responsibility for the content, its accuracy, and its presentation. This disclosure is made in the spirit of transparency and to acknowledge the role of AI in the creation process."
 
----
-
-## Principle
-
-Dirty data is the default. Clean data requires explicit decisions at every step.
