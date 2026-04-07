@@ -1055,5 +1055,5 @@ WHERE a.status = 'FAIL' AND a.check_timestamp >= CURRENT_TIMESTAMP - INTERVAL '1
 
 ## AI Collaboration Disclosure
 
-"In creating this document, I collaborated with Kimi to assist with drafting, structure, and technical editing. I affirm that all AI-generated and co-created content underwent thorough review and evaluation. The final output accurately reflects my understanding, expertise, and intended meaning. While AI assistance was instrumental in the process, I maintain full responsibility for the content, its accuracy, and its presentation. This disclosure is made in the spirit of transparency and to acknowledge the role of AI in the creation process."
+"In creating this document, I collaborated with Kimi, Qwen to assist with drafting, structure, and technical editing. I affirm that all AI-generated and co-created content underwent thorough review and evaluation. The final output accurately reflects my understanding, expertise, and intended meaning. While AI assistance was instrumental in the process, I maintain full responsibility for the content, its accuracy, and its presentation. This disclosure is made in the spirit of transparency and to acknowledge the role of AI in the creation process."
 
