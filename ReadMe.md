@@ -671,8 +671,8 @@ CREATE TABLE audit.schema_changes (
 **DWH Approach:** Intermediate/Mart layer: `quality_checks_lineage` table populated via automated SQL queries against `information_schema` and test metadata. Query this table during alerting to attach downstream impact directly to notifications.  
 **Monitoring:** `[Execution Context: CI/CD runs lineage SQL]` `quality_lineage_report` view; alerts include "Impacts: mart.revenue_daily, executive_dashboard"; automated dependency graph generation.
 ```
--- Lineage registry for quality checks
-CREATE TABLE audit.quality_checks_lineage (
+-- Lineage registry (enforce uniqueness to prevent duplicates on re-runs)
+CREATE TABLE IF NOT EXISTS audit.quality_checks_lineage (
     check_id SERIAL PRIMARY KEY,
     check_name VARCHAR(100),
     source_schema VARCHAR(50),
@@ -680,13 +680,49 @@ CREATE TABLE audit.quality_checks_lineage (
     source_column VARCHAR(100),
     downstream_schema VARCHAR(50),
     downstream_table VARCHAR(100),
-    impact_level VARCHAR(20)  -- 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'
+    impact_level VARCHAR(20),  -- 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'
+    UNIQUE(check_name, source_table, source_column, downstream_table)
 );
 
--- Query to trace impact on failure
+-- STEP 1: Ingest test metadata & downstream dependencies 
+-- (These can be auto-generated from dbt/CI YAML parsers into simple staging tables)
+CREATE TEMP TABLE test_catalog AS VALUES
+    ('null_check', 'staging', 'orders', 'customer_id', 'HIGH'),
+    ('uniqueness_check', 'staging', 'orders', 'order_id', 'CRITICAL'),
+    ('volume_check', 'staging', 'orders', '*', 'MEDIUM');
+
+CREATE TEMP TABLE downstream_deps AS VALUES
+    ('staging', 'orders', 'mart', 'daily_revenue'),
+    ('staging', 'orders', 'mart', 'order_facts');
+
+-- STEP 2: Automated population using information_schema for validation & expansion
+INSERT INTO audit.quality_checks_lineage (
+    check_name, source_schema, source_table, source_column,
+    downstream_schema, downstream_table, impact_level
+)
+SELECT DISTINCT
+    c.check_name,
+    c.table_schema AS source_schema,
+    c.table_name AS source_table,
+    i.column_name AS source_column,
+    d.downstream_schema,
+    d.downstream_table,
+    c.impact_level
+FROM test_catalog c
+JOIN information_schema.columns i 
+  ON c.table_schema = i.table_schema 
+  AND c.table_name = i.table_name 
+  AND (c.column_name = '*' OR c.column_name = i.column_name)
+JOIN downstream_deps d 
+  ON c.table_schema = d.source_schema 
+  AND c.table_name = d.source_table
+ON CONFLICT (check_name, source_table, source_column, downstream_table) DO UPDATE
+SET impact_level = EXCLUDED.impact_level;
+
+-- STEP 3: Trace impact on failure (used by alerting pipeline)
 SELECT downstream_table, impact_level, check_name
 FROM audit.quality_checks_lineage
-WHERE source_table = 'stg_orders' AND source_column = 'amount';
+WHERE source_table = 'orders' AND source_column = 'amount';
 ```
 
 ### Quarantine Performance Guardrails
