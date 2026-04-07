@@ -42,7 +42,6 @@ This guide establishes protocols for preventing such scenarios. It does not rely
   - [Monitoring Methods](#monitoring-methods)
   - [Alerting Channels](#alerting-channels)
 - [Checklists](#checklists)
-- [Personal Experience](#personal-experience)
 - [AI Collaboration Disclosure](#ai-collaboration-disclosure)
 
 ---
@@ -957,32 +956,6 @@ WHERE check_date = CURRENT_DATE;
 - [ ] Monitoring coverage gaps identified
 - [ ] Alert runbooks updated
 - [ ] Data steward review meeting completed
-
----
-
-## Personal Experience
-
-<div style="background-color: #f0f0f0; padding: 15px; border-radius: 5px; opacity: 0.7;">
-
-**Template for your war stories:**
-
-**Incident:** [Brief description of what went wrong]
-
-**Problem:** [Specific data quality issue]
-
-**Consequences:** [Business impact, time lost, credibility hit]
-
-**Decision:** [What check now prevents this]
-
-**Query:** [The SQL that would have caught it]
-
----
-
-*Add your real incidents here. Replace this template with actual failures you've experienced.*
-
-</div>
-
----
 
 ## AI Collaboration Disclosure
 
